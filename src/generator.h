@@ -1,5 +1,5 @@
-#ifndef PARALLEL_H
-#define PARALLEL_H
+#ifndef GENERATOR_H
+#define GENERATOR_H
 
 #include <fstream>
 #include <iostream>
@@ -11,7 +11,7 @@
 
 using namespace std;
 
-class parallel {
+class generator {
 
 private: 
 	float lambdaA;
@@ -25,7 +25,7 @@ private:
 
 public: 
 	
-	parallel ();	//default constructor
+	generator ();	//default constructor
 	
 	void uniformDistribution();//creates the uniform dsitribution 
 	void exponentialDistibution(); //creates the exponential distribution
@@ -34,4 +34,4 @@ public:
 	
 };
 
-#endif //PARALLEL_H
+#endif //GENERATOR_H

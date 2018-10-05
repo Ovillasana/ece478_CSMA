@@ -1,23 +1,23 @@
-#include "parallel.h"
+#include "generator.h"
 
 using namespace std;
 
 
 
-parallel::parallel(){
+generator::generator(){
 	
 }
 
-void parallel::uniformDistribution(){
+void generator::uniformDistribution(){
 	
-	
+	// Create  random numbers from 0 to 1 
 	vector<double> Ua;
 	vector<double> Uc; 
-		Ua[] = {idk what to put here}
-		Uc[] = {idk what to put here}
+		//Ua[] = {idk what to put here}
+		//Uc[] = {idk what to put here}
 }
 
-void parallel::exponentialDistribution(){
+void generator::exponentialDistribution(){
 	
 	// Exponentially distribued generator 
 	vector<double> Xa;
@@ -47,7 +47,7 @@ void parallel::exponentialDistribution(){
 	
 }
 
-void parallel::send(){
+void generator::send(){
 	unsigned int counterA = 0;
 	unsigned int counterC = 0;
 	unsigned int collisionCounter = 0;
