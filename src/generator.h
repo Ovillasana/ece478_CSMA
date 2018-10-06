@@ -8,30 +8,18 @@
 #include <bitset>
 #include <stdio.h>
 #include <math.h>
-
+#include <vector>
+#include <algorithm>
 using namespace std;
 
 class generator {
 
-private: 
-	float lambdaA;
-	float lambdaC;
-	float CW0;
-	float DIFS;
-	float SIFS;
-	float ACK;
-	
-	
+	private:
 
-public: 
-	
-	generator ();	//default constructor
-	
-	void uniformDistribution();//creates the uniform dsitribution 
-	void exponentialDistibution(); //creates the exponential distribution
-	
-	
-	
-};
+	public:
+		generator();	//default constructor
+		void generateArrivalTimes(double lambdaA, double lambdaC, vector<double> &a, vector<double> &c);
+		//creates the exponential distribution
 
+}
 #endif //GENERATOR_H

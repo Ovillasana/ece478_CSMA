@@ -1,57 +1,62 @@
 #include "generator.h"
-
 using namespace std;
 
 
-
-generator::generator(){
-	
+generator::generator() {
 }
 
-void generator::uniformDistribution(){
-	
-	// Create  random numbers from 0 to 1 
+void generator::generateArrivalTimes(double lambdaA, double lambdaC, vector<double> &a, vector<double> &c) {
+
+	//generating a series of uniformly distributed numbers between 0 and 1
 	vector<double> Ua;
-	vector<double> Uc; 
-		//Ua[] = {idk what to put here}
-		//Uc[] = {idk what to put here}
-}
+	vector<double> Uc;
+	for (unsigned int i = 0; i < lambdaA * 10; i++) {
+		double a = ((double)rand() / (RAND_MAX));
+		double c = ((double)rand() / (RAND_MAX));
+		Ua.push_back(a);
+		Uc.push_back(c);
+	}
+	//sort vector & delete duplicates
+	sort(Ua.begin(), Ua.end());
+	sort(Uc.begin(), Uc.end());
+	Ua.erase(unique(Ua.begin(), Ua.end()), Ua.end());
+	Uc.erase(unique(Uc.begin(), Uc.end()), Uc.end());
 
-void generator::exponentialDistribution(){
-	
-	// Exponentially distribued generator 
+	// Exponentially distributed generator 
 	vector<double> Xa;
 	vector<double> Xc;
-	
-	for(unsigned int i = 0; i < Ua.size(); i++){
-		Xa.push_back = (-1/(this.lambdaA)) * log(1 - Ua[i]);
+
+	for (unsigned int i = 0; i < Ua.size(); i++) {
+		Xa.push_back((-1 / (lambdaA)) * log(1 - Ua[i]));
 	}
-	
-	for(unsigned int i = 0; i < Uc.size(); i++){
-		Xc.push_back = (-1/(this.lambdaC)) * log(1 - Uc[i]);
+
+	for (unsigned int i = 0; i < Uc.size(); i++) {
+		Xc.push_back((-1 / (lambdaC)) * log(1 - Uc[i]));
 	}
-	
-/////////////////////////////////////////////
-	
+
 	//Create arrival times for A and C 
+	vector<double>timesA;
+	vector<double>timesC;
+	for (unsigned int i = 0; i < Xa.size(); i++) {
+		timesA.push_back(Xa[i] / (2 * pow(10.0, -5.0)));
+	}
+
+	for (unsigned int i = 0; i < Xc.size(); i++) {
+		timesC.push_back(Xc[i] / (2 * pow(10.0, -5.0)));
+	}
 	vector<double>arrivalTimesA;
 	vector<double>arrivalTimesC;
-	 
-	for (unsigned int i = 0; i < Xa.size(); i++){
-		arrivalTimesA.push_back = Xa[i] / (2*pow(10.0, -5.0);
+	double temp = 0;
+	for (unsigned int i = 0; i < Xa.size(); i++) {
+		temp += timesA[i];
+		arrivalTimesA.push_back(temp);
 	}
-	
-	for (unsigned int i = 0; i < Xc.size(); i++){
-		arrivalTimesA.push_back = Xc[i] / (2*pow(10.0, -5.0);
-	}	
-	
-}
+	temp = 0;
+	for (unsigned int i = 0; i < Xc.size(); i++) {
+		temp += timesC[i];
+		arrivalTimesC.push_back(temp);
+	}
 
-void generator::send(){
-	unsigned int counterA = 0;
-	unsigned int counterC = 0;
-	unsigned int collisionCounter = 0;
-	
-	
-	
+	a = arrivalTimesA;
+	c = arrivalTimesC;
 }
