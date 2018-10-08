@@ -35,9 +35,15 @@ void Station::add_Slot_to_List(int newSlot){ // adds a new slot number to the li
     return;
 }
 
-int Station::backOffTime(){
-    int backOff = (rand() % (CW_0 - 0)) + 0;
-    return backOff;
+void Station::randBackOffTime(){
+    back_off_timer = (rand() % (CW_0 - 0)) + 1;
+    
+    return;
+}
+
+void Station::doubleContention(int k){
+    back_off_timer = (rand() % (2^k * CW_0 - 0)) + 1;
+    return;
 }
 
 

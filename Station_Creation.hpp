@@ -26,6 +26,7 @@ class Station {
     int CW_0 = 4; //4 slots
     int CW_max = 1024; //1024 slots
     bool readyToTransmit = false;
+    int back_off_timer = 0;
 
     
 public:
@@ -34,13 +35,16 @@ public:
     void set_Lambda(int num);
     void connection_Create(Station* new_Station);
     void add_Slot_to_List(int newSlot);
-    int backOffTime();
+    void randBackOffTime();
     int getSlotList(){return slot_List.front();};
     void setrdyToTrans(){readyToTransmit = true; return;};
     void setnotrdyToTrans(){readyToTransmit = false; return;}
     bool getrdyToTransmit(){return readyToTransmit;}
     void popList(){slot_List.pop_front();return;}
     void sort_list(){slot_List.sort(); return;}
+    int getBackOffTime(){return back_off_timer;};
+    void subtBackOffTime(){back_off_timer--; return;}
+    void doubleContention(int k);
 
     
 };

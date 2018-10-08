@@ -27,6 +27,7 @@ class Simulation {
     int transmissionRate = 6; // 6Mbps
     int simulationTime = 10; //10sec
     int transmissionTime = 100; //made this up for test
+    int lowestBackoffTimer = 0; //lowest back off timer between the nodes
 public:
     int getGlobalClk(){return globalClock;};
     void incGlobalClk(int inc){globalClock+=inc;}; // incriments global clock by amount
@@ -40,6 +41,12 @@ public:
     int getTranTime(){return transmissionTime;}
     int getSIFS(){return SIFS_duration;}
     int getACK(){return ACK_RTS_CTS;}
+    bool senseDIFS();
+    void deincrimentBackoffTime();
+    int getLowestBackoff(){return lowestBackoffTimer;}
+    void setLowestBackoff(int time){lowestBackoffTimer = time; return;};
+    void senseLowestBackOffTime();
+    
 
 };
 

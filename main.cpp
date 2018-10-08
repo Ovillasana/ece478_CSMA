@@ -22,6 +22,7 @@ int checkTransmitTimeperNode(){ // gets next slot time from each node in slot_Li
     for (it = temp.begin(); it != temp.end(); ++it){
         if ((*it)->getSlotList() <= concurrentSim.getGlobalClk() && (*it)->getSlotList()!=0) {
             (*it)->setrdyToTrans();
+            (*it)->randBackOffTime();
         }
     }
     return 0;
@@ -46,7 +47,7 @@ Station* nodeToTransmit(){  // finds a node that is ready to transmit
     list<Station*> temp = concurrentSim.getStations();
     
     for (it = temp.begin(); it != temp.end(); ++it){
-        if ((*it)->getrdyToTransmit() == true) {
+        if ((*it)->getrdyToTransmit() == true && (*it)->getBackOffTime() == 0) {
             node = *it;
             break;
         }
@@ -55,24 +56,14 @@ Station* nodeToTransmit(){  // finds a node that is ready to transmit
 }
 
 void startTransmit(){
-    Station* node = nodeToTransmit();
-    //change line status ture
+    Station* node = nodeToTransmit();  // // finds a node that is ready to transmit
+    //change line status true
     concurrentSim.setLineBusy();
-    //add DIFS and Back off time
-    concurrentSim.incGlobalClk(concurrentSim.getDIFS());
-    concurrentSim.incGlobalClk(node->backOffTime());
-    // check other nodes if they want to transmit during this time
-    checkTransmitTimeperNode();
-    if (checkNodeTransmit().size()>1) {
-        concurrentSim.setCollisionCounter(1);//incriment collision
-    }
+    // add DIFS and Back off time
     //transmit
-    //seize medium
-    concurrentSim.setLineBusy();
-    
     //add transmission durration
     concurrentSim.incGlobalClk(concurrentSim.getTranTime());
-    //add SIFS and Ack
+    //add SIFS and Ack to global clock
     concurrentSim.incGlobalClk(concurrentSim.getSIFS());
     concurrentSim.incGlobalClk(concurrentSim.getACK());
     
@@ -134,15 +125,25 @@ int main() {
     
     
     while (concurrentSim.getGlobalClk()< 50000) {
-        checkTransmitTimeperNode();
+        checkTransmitTimeperNode();                 // checks nodes slot list against global time for incoming packet and sets status on node to true
         if (concurrentSim.getLineStatus()==false) {  // checks line status
-            while (!checkNodeTransmit().empty()) {
-                if (checkNodeTransmit().size()>1) {
-                    concurrentSim.setCollisionCounter(1);//incriment collision
+            while (!checkNodeTransmit().empty()) { // checks the list of nodes that are ready to transmitt
+                //set lowest backoff
+                concurrentSim.senseLowestBackOffTime();
+
+                for (int i = 0; i<concurrentSim.getDIFS(); i++) { // incriment global clock through DIFS, while senseing for line busy.
+                    concurrentSim.incGlobalClk(1);
+                }
+                for (int i = 0; i<concurrentSim.getLowestBackoff(); i++) {  // deincriment backoff time
+                    concurrentSim.deincrimentBackoffTime();
+                    if (checkNodeTransmit().size()>1) { // checks if there is more than one node waiting to transmit
+                            // check if nodes backofftimes are both at zero
+                        concurrentSim.setCollisionCounter(1);//incriment collision
+                    }
                 }
                 // start transmit
-                startTransmit();
-                checkTransmitTimeperNode();
+                startTransmit();        // Starts the transmission
+                checkTransmitTimeperNode(); // checks nodes for packets that came in during transmision
             }
         }
         
