@@ -52,23 +52,82 @@ void generateArrivalTimes(double lambdaA, double lambdaC, vector<double> &a, vec
 	double temp = 0;
 	for (unsigned int i = 0; i < Xa.size(); i++) {
 		temp += timesA[i];
-		arrivalTimesA.push_back(temp);
+		arrivalTimesA.push_back(ceil(temp));
 	}
 	temp = 0;
 	for (unsigned int i = 0; i < Xc.size(); i++) {
 		temp += timesC[i];
-		arrivalTimesC.push_back(temp);
+		arrivalTimesC.push_back(ceil(temp));
 	}
 
 	a = arrivalTimesA;
 	c = arrivalTimesC;
 }
 
+double RNG(int max) {
+	double rngDbl = 0;
+	int rngInt = (rand() % (max)) ;
+	rngDbl = (double)rngInt;
+	return rngDbl;
+}
+
+
+void simulation1(vector<double> &a, vector<double> &c) {
+	double SIFS = 1;
+	double DIFS = 2;
+	double ACK = 2;
+	double CW0 = 4;
+	double CWmax = 1024;
+	double collision, counterA, counterC, backoff = 0;
+
+	long double globalTimer = 0;
+
+	// checks which station transmits first 
+	bool aFirst = false;
+	bool cFirst = false;
+
+	if (a[0] < c[0]) {
+		// a transmits first
+		aFirst = true;
+		backoff = RNG(CW0);
+		globalTimer += (a[0] + DIFS + backoff);
+		//a.erase(a.begin());
+	}
+	
+	else if (c[0] < a[0]) {
+		// c transmits first
+		cFirst = true;
+		backoff = RNG(CW0);
+		globalTimer += (c[0] + DIFS + backoff);
+	}
+
+	else if (a[0] == c[0]) {
+		//collision right away
+		//handle later
+		globalTimer += 0;
+	}
+
+	else {}
+	
+	//check the i
+
+}
+
+
 int main() {
+
+	
+	for (unsigned int i = 0; i < 40; i++) {
+		double temp = RNG(4);
+		cout << temp << endl;
+	}
 
 	vector<double> arrivalTimesA;
 	vector<double> arrivalTimesC;
 	generateArrivalTimes(50, 50, arrivalTimesA, arrivalTimesC);
+	cout << "testttttttt";
+
+	//arrivalTimesA.erase(arrivalTimesA.begin());
 
 	int abc = 0;
 
