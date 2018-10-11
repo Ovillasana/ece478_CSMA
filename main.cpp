@@ -6,13 +6,84 @@
 //  Copyright © 2018 Alec Foster. All rights reserved.
 //
 
-#include <iostream>
 #include "Station_Creation.hpp"
 #include "Sim.hpp"
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <math.h>
 
 using namespace std;
 
  Simulation concurrentSim;
+
+
+void generateArrivalTimes(double lambdaA, double lambdaC, vector<double> &a, vector<double> &c) {
+    
+    //generating a series of uniformly distributed numbers between 0 and 1
+    vector<double> Ua;
+    vector<double> Uc;
+    for (unsigned int i = 0; i < lambdaA * 10; i++) {
+        double a = ((double)rand() / (RAND_MAX));
+        double c = ((double)rand() / (RAND_MAX));
+        Ua.push_back(a);
+        Uc.push_back(c);
+    }
+    //sort vector & delete duplicates
+    sort(Ua.begin(), Ua.end());
+    sort(Uc.begin(), Uc.end());
+    Ua.erase(unique(Ua.begin(), Ua.end()), Ua.end());
+    Uc.erase(unique(Uc.begin(), Uc.end()), Uc.end());
+    
+    // Exponentially distributed generator
+    vector<double> Xa;
+    vector<double> Xc;
+    
+    for (unsigned int i = 0; i < Ua.size(); i++) {
+        Xa.push_back((-1 / (lambdaA)) * log(1 - Ua[i]));
+    }
+    
+    for (unsigned int i = 0; i < Uc.size(); i++) {
+        Xc.push_back((-1 / (lambdaC)) * log(1 - Uc[i]));
+    }
+    
+    //Create arrival times for A and C
+    vector<double>timesA;
+    vector<double>timesC;
+    for (unsigned int i = 0; i < Xa.size(); i++) {
+        timesA.push_back(Xa[i] / (2 * pow(10.0, -5.0)));
+    }
+    
+    for (unsigned int i = 0; i < Xc.size(); i++) {
+        timesC.push_back(Xc[i] / (2 * pow(10.0, -5.0)));
+    }
+    vector<double>arrivalTimesA;
+    vector<double>arrivalTimesC;
+    double temp = 0;
+    for (unsigned int i = 0; i < Xa.size(); i++) {
+        temp += timesA[i];
+        arrivalTimesA.push_back(ceil(temp));
+    }
+    temp = 0;
+    for (unsigned int i = 0; i < Xc.size(); i++) {
+        temp += timesC[i];
+        arrivalTimesC.push_back(ceil(temp));
+    }
+    
+    a = arrivalTimesA;
+    c = arrivalTimesC;
+}
+
+double RNG(int max) {
+    double rngDbl = 0;
+    int rngInt = (rand() % (max)) ;
+    rngDbl = (double)rngInt;
+    return rngDbl;
+}
 
 
 
@@ -20,15 +91,16 @@ int checkTransmitTimeperNode(){ // gets next slot time from each node in slot_Li
     list<Station*>::iterator it;
     list<Station*> temp = concurrentSim.getStations();
     for (it = temp.begin(); it != temp.end(); ++it){
-        if ((*it)->getSlotList() <= concurrentSim.getGlobalClk() && (*it)->getSlotList()!=0) {
+        if ((*it)->getSlotList() <= concurrentSim.getGlobalClk() && (*it)->getSlotList()!=0 && !(*it)->getrdyToTransmit()) {
             (*it)->setrdyToTrans();
             (*it)->randBackOffTime();
+            (*it)->setDIFSTimer(concurrentSim.getDIFS());
         }
     }
     return 0;
 }
 
-list<Station*> checkNodeTransmit(){ // iterates through nodes and finds nodes
+list<Station*> getListofReadyNdoestrans(){ // iterates through nodes and finds nodes
     list<Station*> ready;
     list<Station*>::iterator it;
     list<Station*> temp = concurrentSim.getStations();
@@ -80,6 +152,65 @@ void startTransmit(){
 //test time creation
 int random_time(){int time = (rand() % (50000 - 0)) + 1; return time;}
 
+void simulate(int lambdaA, int lambdaC, Station* A, Station* C){
+    generateArrivalTimes(lambdaA, lambdaC, (A->getpointSlotList()), (C->getpointSlotList()));
+    A->makeList();
+    C->makeList();
+    while (concurrentSim.getGlobalClk()< 50000) {
+        // check for line status
+        if (concurrentSim.checkifLineIsBusy()==false) { // checks line status
+            // check for packets to send
+            checkTransmitTimeperNode(); // checks nodes slot list against global time for incoming packet and sets readyToTransmit on node to true
+        }
+        if (getListofReadyNdoestrans().size()>0  && concurrentSim.checkifLineIsBusy()==false) { // only goes in if line is not busy and there is a node ready to transmit
+            // start back off time
+            concurrentSim.deincrimentBackoffTime();
+            // start DIFS
+            concurrentSim.deincrimentDIFS();
+            // check for colision
+            if (concurrentSim.checkForStationsReadytoTrans().size()>1) {
+                concurrentSim.incCollisionCounter(1);
+                list<Station*>::iterator it;
+                list<Station*> temp = concurrentSim.checkForStationsReadytoTrans();
+                // update back off time
+                for (it = temp.begin(); it != temp.end(); ++it){
+                    (*it)->doubleContention(concurrentSim.getK());
+                }
+                concurrentSim.incrK();
+                concurrentSim.incGlobalClk(100 +concurrentSim.getSIFS());
+            }
+            // start transmission
+            if (concurrentSim.checkForStationsReadytoTrans().size()==1) {
+                concurrentSim.startTrans();
+            }
+            // SIFS and ACK
+        }
+        if (concurrentSim.checkifLineIsBusy()==true) {
+            concurrentSim.incPacketsThrough();
+            //check if tranmission over
+            if (concurrentSim.checkPacketsthrough()) {
+                //check if successful
+                //deicrment sifs and ack
+                if (concurrentSim.getSIFSCounter() != 0) {
+                    concurrentSim.deincSIFS();
+                }
+                if (concurrentSim.getSIFSCounter() == 0) {
+                    concurrentSim.deincAck();
+                }
+                //line not busy
+                if (concurrentSim.getSIFSCounter() == 0 && concurrentSim.getAckCounter() == 0) {
+                    concurrentSim.setLineNotBusy();
+                    //reset node
+                    concurrentSim.resetNode();
+                    concurrentSim.resetK();
+                }
+                // successful transmission
+            }
+        }
+        concurrentSim.incGlobalClk(1); // incriments global clock by one
+    }
+}
+
 
 int main() {
     // Concurrent Comunications
@@ -93,6 +224,8 @@ int main() {
     Nodes.push_back(&B);
     Nodes.push_back(&C);
     Nodes.push_back(&D);
+    
+    //concurrent simulation
     concurrentSim.setStations(Nodes);
     
     A.in_range_Create(&B); // create in range
@@ -111,46 +244,15 @@ int main() {
     A.connection_Create(&B); // create transmission connections
     C.connection_Create(&D);
     
-    //Test values
-    for (int i = 0; i <100; i++) {
-        A.add_Slot_to_List(random_time());
-        B.add_Slot_to_List(random_time());
-    }
+    int lambdaA = 50;
+    int lambdaC = 50;
+    simulate(lambdaA, lambdaC, &A, &C);
+    cout << "Lambda A = "<<lambdaA<<"\n";
+    cout << "Lambda C = "<<lambdaC<<"\n";
+    cout << "Collisions: " << concurrentSim.getcollisioncounter() << "\n";
+    cout << "A Counter: " << A.getTransmissionsThrough() << "\n";
+    cout << "C Counter: " << C.getTransmissionsThrough() << "\n";
     
-    A.sort_list();
-    B.sort_list();
-     //end test values
-    
-
-    
-    
-    while (concurrentSim.getGlobalClk()< 50000) {
-        checkTransmitTimeperNode();                 // checks nodes slot list against global time for incoming packet and sets status on node to true
-        if (concurrentSim.getLineStatus()==false) {  // checks line status
-            while (!checkNodeTransmit().empty()) { // checks the list of nodes that are ready to transmitt
-                //set lowest backoff
-                concurrentSim.senseLowestBackOffTime();
-
-                for (int i = 0; i<concurrentSim.getDIFS(); i++) { // incriment global clock through DIFS, while senseing for line busy.
-                    concurrentSim.incGlobalClk(1);
-                }
-                for (int i = 0; i<concurrentSim.getLowestBackoff(); i++) {  // deincriment backoff time
-                    concurrentSim.deincrimentBackoffTime();
-                    if (checkNodeTransmit().size()>1) { // checks if there is more than one node waiting to transmit
-                            // check if nodes backofftimes are both at zero
-                        concurrentSim.setCollisionCounter(1);//incriment collision
-                    }
-                }
-                // start transmit
-                startTransmit();        // Starts the transmission
-                checkTransmitTimeperNode(); // checks nodes for packets that came in during transmision
-            }
-        }
-        
-        concurrentSim.incGlobalClk(1); // incriments global clock by one
-    }
     return 0;
 }
-
-
 

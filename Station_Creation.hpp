@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <string>
 #include <list>
+#include <vector>
+
 using namespace std;
 
 
@@ -26,7 +28,13 @@ class Station {
     int CW_0 = 4; //4 slots
     int CW_max = 1024; //1024 slots
     bool readyToTransmit = false;
+    bool stationTransmitting = false;
+    bool sentPackets = false;
     int back_off_timer = 0;
+    vector<double> slot_List_vec;
+    int DIFS_timer = 0;
+    int transmisionsThrough = 0;
+    int kCounter = 1;
 
     
 public:
@@ -37,6 +45,7 @@ public:
     void add_Slot_to_List(int newSlot);
     void randBackOffTime();
     int getSlotList(){return slot_List.front();};
+    
     void setrdyToTrans(){readyToTransmit = true; return;};
     void setnotrdyToTrans(){readyToTransmit = false; return;}
     bool getrdyToTransmit(){return readyToTransmit;}
@@ -45,6 +54,24 @@ public:
     int getBackOffTime(){return back_off_timer;};
     void subtBackOffTime(){back_off_timer--; return;}
     void doubleContention(int k);
+    vector<double>& getpointSlotList(){return slot_List_vec;}
+    void makeList();
+    int getDIFSTimer(){return DIFS_timer;}
+    void setDIFSTimer(int time){DIFS_timer = time;}
+    void subtDIFSTimer(){DIFS_timer--;}
+    void setStationTransmitting(bool val){stationTransmitting = val;}
+    bool getStationTransmitting(){return stationTransmitting;}
+    void incPacketsthrough(){packetsThrough++;}
+    void resetPacketsThrough(){packetsThrough = 0;}
+    int getPacketsThrough(){return packetsThrough;}
+    void setSentPackets(bool val){sentPackets = val;}
+    bool getSentPackets(){return sentPackets;}
+    void reset(int time);
+    void incTransmisionsThrough(){transmisionsThrough++;}
+    int getTransmissionsThrough(){return transmisionsThrough;}
+    int getK(){return kCounter;}
+    void incrK(){kCounter++;}
+    void resetK(){kCounter =1;}
 
     
 };

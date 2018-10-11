@@ -8,6 +8,7 @@
 
 #include "Station_Creation.hpp"
 #include "Sim.hpp"
+#include <math.h>
 
 
 void Station::station_Create(char name){ // creates station name
@@ -42,8 +43,28 @@ void Station::randBackOffTime(){
 }
 
 void Station::doubleContention(int k){
-    back_off_timer = (rand() % (2^k * CW_0 - 0)) + 1;
+    int newK = pow(2.0, k);
+    back_off_timer = (rand() % (newK * CW_0 - 0)) + 1;
     return;
+}
+
+void Station::makeList(){
+    // list.assign(vector.begin(), vector.end());
+    slot_List.assign(slot_List_vec.begin(), slot_List_vec.end());
+    return;
+}
+
+void Station::reset(int time){
+    transmisionsThrough++;
+    packetsThrough = 0;
+    readyToTransmit = false;
+    stationTransmitting = false;
+    sentPackets = 0;
+    for (int i = 0; i < slot_List.size(); i++) {
+        if (slot_List.front()<time) {
+            slot_List.pop_front();
+        }
+    }
 }
 
 
