@@ -19,7 +19,7 @@
 
 using namespace std;
 
- Simulation concurrentSim;
+ Simulation concurrentSim1;
 
 
 void generateArrivalTimes(double lambdaA, double lambdaC, vector<double> &a, vector<double> &c) {
@@ -89,12 +89,26 @@ double RNG(int max) {
 
 int checkTransmitTimeperNode(){ // gets next slot time from each node in slot_List and sets ready to transmit to true if it is eaqual or less than to the global clock
     list<Station*>::iterator it;
-    list<Station*> temp = concurrentSim.getStations();
+    list<Station*> temp = concurrentSim1.getStations();
     for (it = temp.begin(); it != temp.end(); ++it){
-        if ((*it)->getSlotList() <= concurrentSim.getGlobalClk() && (*it)->getSlotList()!=0 && !(*it)->getrdyToTransmit()) {
-            (*it)->setrdyToTrans();
-            (*it)->randBackOffTime();
-            (*it)->setDIFSTimer(concurrentSim.getDIFS());
+        if ((*it)->getSlotList() <= concurrentSim1.getGlobalClk()) {
+            if ((*it)->getSlotList()!=0) {
+                if ((*it)->getStatusNode() == "Idle") {
+                    if ((*it)->getBackOffTime()==0) {
+                        (*it)->randBackOffTime();
+                    }
+                    (*it)->setrdyToTrans();
+                    (*it)->setDIFSTimer(concurrentSim1.getDIFS());
+                    (*it)->setStatus(concurrentSim1.getStatusat(2));
+                }
+            }
+            if (concurrentSim1.getRTSCTS()) {
+                if ((*it)->getStatusNode() == "RTS") {
+                    if ((*it)->getRTSCounter()==0) {
+                        
+                    }
+                }
+            }
         }
     }
     return 0;
@@ -103,7 +117,7 @@ int checkTransmitTimeperNode(){ // gets next slot time from each node in slot_Li
 list<Station*> getListofReadyNdoestrans(){ // iterates through nodes and finds nodes
     list<Station*> ready;
     list<Station*>::iterator it;
-    list<Station*> temp = concurrentSim.getStations();
+    list<Station*> temp = concurrentSim1.getStations();
 
     for (it = temp.begin(); it != temp.end(); ++it){
         if ((*it)->getrdyToTransmit() == true) {
@@ -113,38 +127,34 @@ list<Station*> getListofReadyNdoestrans(){ // iterates through nodes and finds n
     return ready;
 }
 
-Station* nodeToTransmit(){  // finds a node that is ready to transmit
-    Station* node = NULL;
+list<Station*> nodesToTransmit(){  // finds a node that is ready to transmit
+    list<Station*> nodes;
     list<Station*>::iterator it;
-    list<Station*> temp = concurrentSim.getStations();
+    list<Station*> temp = concurrentSim1.getStations();
     
-    for (it = temp.begin(); it != temp.end(); ++it){
-        if ((*it)->getrdyToTransmit() == true && (*it)->getBackOffTime() == 0) {
-            node = *it;
-            break;
+    if (concurrentSim1.getRTSCTS()) {
+        for (it = temp.begin(); it != temp.end(); ++it){
+            if ((*it)->getrdyToTransmit() == true && (*it)->getBackOffTime() == 0 && (*it)->getRTSCounter() == 0) {
+                if (!(*it)->getCTSRec()) {
+                    (*it)->setRTSCounter();
+                }
+                
+                nodes.push_back(*it);
+            }
         }
     }
-    return node;
+    else{
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getrdyToTransmit() == true && (*it)->getBackOffTime() == 0) {
+            nodes.push_back(*it);
+        }
+    }
+    }
+    return nodes;
 }
 
 void startTransmit(){
-    Station* node = nodeToTransmit();  // // finds a node that is ready to transmit
-    //change line status true
-    concurrentSim.setLineBusy();
-    // add DIFS and Back off time
-    //transmit
-    //add transmission durration
-    concurrentSim.incGlobalClk(concurrentSim.getTranTime());
-    //add SIFS and Ack to global clock
-    concurrentSim.incGlobalClk(concurrentSim.getSIFS());
-    concurrentSim.incGlobalClk(concurrentSim.getACK());
     
-    // pop slot_list
-    node->popList();
-    
-    //turn of transmission for line and node
-    node->setnotrdyToTrans();
-    concurrentSim.setLineNotBusy();
     
     return;
 }
@@ -152,63 +162,56 @@ void startTransmit(){
 //test time creation
 int random_time(){int time = (rand() % (50000 - 0)) + 1; return time;}
 
-void simulate(int lambdaA, int lambdaC, Station* A, Station* C){
+void simulate(int lambdaA, int lambdaC, Station* A, Station* C, int val){
+    if (val) {
+        concurrentSim1.setRTSCTS();
+    }
     generateArrivalTimes(lambdaA, lambdaC, (A->getpointSlotList()), (C->getpointSlotList()));
     A->makeList();
     C->makeList();
-    while (concurrentSim.getGlobalClk()< 50000) {
-        // check for line status
-        if (concurrentSim.checkifLineIsBusy()==false) { // checks line status
-            // check for packets to send
-            checkTransmitTimeperNode(); // checks nodes slot list against global time for incoming packet and sets readyToTransmit on node to true
-        }
-        if (getListofReadyNdoestrans().size()>0  && concurrentSim.checkifLineIsBusy()==false) { // only goes in if line is not busy and there is a node ready to transmit
-            // start back off time
-            concurrentSim.deincrimentBackoffTime();
-            // start DIFS
-            concurrentSim.deincrimentDIFS();
-            // check for colision
-            if (concurrentSim.checkForStationsReadytoTrans().size()>1) {
-                concurrentSim.incCollisionCounter(1);
-                list<Station*>::iterator it;
-                list<Station*> temp = concurrentSim.checkForStationsReadytoTrans();
-                // update back off time
-                for (it = temp.begin(); it != temp.end(); ++it){
-                    (*it)->doubleContention(concurrentSim.getK());
-                }
-                concurrentSim.incrK();
-                concurrentSim.incGlobalClk(100 +concurrentSim.getSIFS());
-            }
-            // start transmission
-            if (concurrentSim.checkForStationsReadytoTrans().size()==1) {
-                concurrentSim.startTrans();
-            }
-            // SIFS and ACK
-        }
-        if (concurrentSim.checkifLineIsBusy()==true) {
-            concurrentSim.incPacketsThrough();
-            //check if tranmission over
-            if (concurrentSim.checkPacketsthrough()) {
-                //check if successful
-                //deicrment sifs and ack
-                if (concurrentSim.getSIFSCounter() != 0) {
-                    concurrentSim.deincSIFS();
-                }
-                if (concurrentSim.getSIFSCounter() == 0) {
-                    concurrentSim.deincAck();
-                }
-                //line not busy
-                if (concurrentSim.getSIFSCounter() == 0 && concurrentSim.getAckCounter() == 0) {
-                    concurrentSim.setLineNotBusy();
-                    //reset node
-                    concurrentSim.resetNode();
-                    concurrentSim.resetK();
-                }
-                // successful transmission
-            }
-        }
-        concurrentSim.incGlobalClk(1); // incriments global clock by one
+    while (concurrentSim1.getGlobalClk()< 50000) {
+        concurrentSim1.deincrimentCounters();
+        concurrentSim1.updateStatus();
+        //collision check
+        concurrentSim1.collisionCheck();
+        checkTransmitTimeperNode(); //check each node for new packet
+        concurrentSim1.incGlobalClk(1); // incriments global clock by one
     }
+}
+
+void createConectionsSim1(Station* A,Station* B,Station* C,Station* D){
+    A->in_range_Create(B); // create in range
+    A->in_range_Create(C);
+    A->in_range_Create(D);
+    B->in_range_Create(A);
+    B->in_range_Create(C);
+    B->in_range_Create(D);
+    C->in_range_Create(A);
+    C->in_range_Create(B);
+    C->in_range_Create(D);
+    D->in_range_Create(A);
+    D->in_range_Create(B);
+    D->in_range_Create(C);
+    
+    A->connection_Create(B); // create transmission connections
+    C->connection_Create(D);
+    B->connection_Create(A);
+    D->connection_Create(C);
+    
+    return;
+}
+void createConectionsSim2(Station* A,Station* B,Station* C,Station* D){
+    A->in_range_Create(B); // create in range
+    B->in_range_Create(A);
+    B->in_range_Create(C);
+    C->in_range_Create(B);
+    
+    A->connection_Create(B); // create transmission connections
+    C->connection_Create(B);
+    B->connection_Create(A);
+    B->connection_Create(C);
+    
+    return;
 }
 
 
@@ -226,32 +229,20 @@ int main() {
     Nodes.push_back(&D);
     
     //concurrent simulation
-    concurrentSim.setStations(Nodes);
-    
-    A.in_range_Create(&B); // create in range
-    A.in_range_Create(&C);
-    A.in_range_Create(&D);
-    B.in_range_Create(&A);
-    B.in_range_Create(&C);
-    B.in_range_Create(&D);
-    C.in_range_Create(&A);
-    C.in_range_Create(&B);
-    C.in_range_Create(&D);
-    D.in_range_Create(&A);
-    D.in_range_Create(&B);
-    D.in_range_Create(&C);
-    
-    A.connection_Create(&B); // create transmission connections
-    C.connection_Create(&D);
-    
+    concurrentSim1.setStations(Nodes); // concurrent with out virtual carrier sensing  
+    createConectionsSim1(&A, &B, &C, &D); // concurrent
+    //createConectionsSim2(&A, &B, &C, &D); // hidden
+
     int lambdaA = 50;
     int lambdaC = 50;
-    simulate(lambdaA, lambdaC, &A, &C);
+    simulate(lambdaA, lambdaC, &A, &C, 1);
     cout << "Lambda A = "<<lambdaA<<"\n";
     cout << "Lambda C = "<<lambdaC<<"\n";
-    cout << "Collisions: " << concurrentSim.getcollisioncounter() << "\n";
-    cout << "A Counter: " << A.getTransmissionsThrough() << "\n";
-    cout << "C Counter: " << C.getTransmissionsThrough() << "\n";
+    cout << "Collisions: " << concurrentSim1.getcollisioncounter() << "\n";
+    cout << "A Counter: " << A.getPacketsThrough() << "\n";
+    cout << "C Counter: " << C.getPacketsThrough() << "\n";
+    
+    
     
     return 0;
 }

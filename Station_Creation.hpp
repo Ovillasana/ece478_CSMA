@@ -35,6 +35,19 @@ class Station {
     int DIFS_timer = 0;
     int transmisionsThrough = 0;
     int kCounter = 1;
+    bool sendR = false;
+    int transmitCounter = 0;
+    int RTScounter = 0;
+    int SIFSCounter = 0;
+    int NAVCounterRTS = 104;
+    int NAVCounterCTS = 101;
+    bool receivedRTS = false;
+    int CTSCounter = 0;
+    bool receivedCTS = false;
+    string status = "Idle";
+    int ACKCounter = 0;
+    
+    
 
     
 public:
@@ -49,7 +62,7 @@ public:
     void setrdyToTrans(){readyToTransmit = true; return;};
     void setnotrdyToTrans(){readyToTransmit = false; return;}
     bool getrdyToTransmit(){return readyToTransmit;}
-    void popList(){slot_List.pop_front();return;}
+    void popList(int time);
     void sort_list(){slot_List.sort(); return;}
     int getBackOffTime(){return back_off_timer;};
     void subtBackOffTime(){back_off_timer--; return;}
@@ -66,14 +79,46 @@ public:
     int getPacketsThrough(){return packetsThrough;}
     void setSentPackets(bool val){sentPackets = val;}
     bool getSentPackets(){return sentPackets;}
-    void reset(int time);
+    void resetSucsess(int time);
     void incTransmisionsThrough(){transmisionsThrough++;}
     int getTransmissionsThrough(){return transmisionsThrough;}
     int getK(){return kCounter;}
     void incrK(){kCounter++;}
     void resetK(){kCounter =1;}
+    int getRTSCounter(){return RTScounter;}
+    void setRTSCounter(){RTScounter = 2;}
+    bool checkRangeForBusy();
+    void resetCollision();
+    int getSIFS(){return SIFSCounter;}
+    void setSIFS(){SIFSCounter = 1;}
+    void subSIFS(){SIFSCounter--;}
+    list<Station*> getConections(){return connections;}
+    list<Station*> getInRange(){return inRange;}
+    void deincRTSCounter(){RTScounter--;}
+    void setCTSCounter(){CTSCounter = 2;}
+    int getCTSCounter(){return CTSCounter;}
+    void deincCTSCounter(){CTSCounter--;}
+    bool getRTSRec(){return receivedRTS;}
+    bool getCTSRec(){return receivedCTS;}
+    void resetRTSRec(){receivedRTS = false;}
+    void resetCTSRec(){receivedCTS = false;}
+    void RTSRec(){receivedRTS = true;}
+    string getStatusNode(){return status;}
+    void setStatus(string newStat){status = newStat;}
+    void setTransCounter(){transmitCounter = 100;}
+    int getTransmitCounter(){return transmitCounter;}
+    void subTransmistCounter(){transmitCounter--;}
+    void conectionsRec();
+    void conectionsIdle();
+    void conectionsACK();
+    bool receiverisACK();
+    int getAckCounter(){return ACKCounter;}
+    void setAckCounter(){ACKCounter = 2;}
+    void deincACKcounter(){ACKCounter--;}
+    bool checkAckisDone();
+    void sendRTS();
 
-    
+
 };
 
 #endif /* Station_Creation_hpp */

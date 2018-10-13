@@ -10,6 +10,7 @@
 #define Sim_hpp
 
 #include <stdio.h>
+#include <iostream>
 #include "Station_Creation.hpp"
 
 class Simulation {
@@ -32,6 +33,11 @@ class Simulation {
     int kColisionCounter = 1;
     int SIFSCounter = 0;
     int AckCounter = 0;
+    bool RTSCTS = false;
+    bool collisionBool = false;
+    vector<string> status{"Trans","Receiving","DIFS","RTS","CTS","NAVRTS","NAVCTS","BackOff","SIFS","Freeze","ACK","Idle","Wait"};
+
+    
 public:
     int getGlobalClk(){return globalClock;};
     void incGlobalClk(int inc){globalClock+=inc;}; // incriments global clock by amount
@@ -50,7 +56,7 @@ public:
     int getLowestBackoff(){return lowestBackoffTimer;}
     void setLowestBackoff(int time){lowestBackoffTimer = time; return;};
     void senseLowestBackOffTime();
-    void deincrimentDIFS();
+    void deincrimentCounters();
     bool getNodewaiting(){return nodeToTransmit;}
     void setNodewaiting(bool value){nodeToTransmit = value;}
     list<Station*> checkForStationsReadytoTrans();
@@ -68,7 +74,16 @@ public:
     void resetK(){kColisionCounter = 1;}
     int getK(){return kColisionCounter;}
     void incrK(){kColisionCounter++;}
-    
+    void sendRTS();
+    list<Station*> StationsthatareTrans();
+    void setRTSCTS(){RTSCTS = true;}
+    bool getRTSCTS(){return RTSCTS;}
+    void deincRTS();
+    void deincCTS();
+    string getStatusat(int val){return status.at(val);}
+    void updateStatus();
+    void conectionsRec();
+    void collisionCheck();
     
 
 };

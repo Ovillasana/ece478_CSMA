@@ -45,6 +45,7 @@ void Station::randBackOffTime(){
 void Station::doubleContention(int k){
     int newK = pow(2.0, k);
     back_off_timer = (rand() % (newK * CW_0 - 0)) + 1;
+    kCounter++;
     return;
 }
 
@@ -54,17 +55,118 @@ void Station::makeList(){
     return;
 }
 
-void Station::reset(int time){
-    transmisionsThrough++;
-    packetsThrough = 0;
-    readyToTransmit = false;
-    stationTransmitting = false;
-    sentPackets = 0;
+void Station::popList(int time){
     for (int i = 0; i < slot_List.size(); i++) {
         if (slot_List.front()<time) {
             slot_List.pop_front();
         }
     }
+}
+
+void Station::resetSucsess(int time){
+    transmisionsThrough++;
+    packetsThrough = 0;
+    readyToTransmit = false;
+    stationTransmitting = false;
+    sentPackets = 0;
+    resetK();
+    for (int i = 0; i < slot_List.size(); i++) {
+        if (slot_List.front()<time) {
+            slot_List.pop_front();
+        }
+    }
+}
+
+bool Station::checkRangeForBusy(){
+    list<Station*>::iterator it;
+    list<Station*> temp = inRange;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode() == "Trans") {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Station::resetCollision(){
+    packetsThrough = 0;
+    readyToTransmit = true;
+    stationTransmitting = true;
+    sentPackets = 0;
+    randBackOffTime();
+    setDIFSTimer(2);
+    incrK();
+        }
+
+void Station::conectionsRec(){
+    list<Station*>::iterator it;
+    list<Station*> temp = connections;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode() == "Idle") {
+            (*it)->setStatus("Receiving");
+        }
+    }
+}
+
+void Station::conectionsIdle(){
+    list<Station*>::iterator it;
+    list<Station*> temp = connections;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode()=="Receiving") {
+            (*it)->setStatus("Idle");
+        }
+        
+    }
+    
+}
+
+void Station::conectionsACK(){
+    list<Station*>::iterator it;
+    list<Station*> temp = connections;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode()=="Receiving") {
+            (*it)->setStatus("ACK");
+            (*it)->setAckCounter();
+        }
+        
+    }
+    
+}
+
+bool Station::receiverisACK(){
+    list<Station*>::iterator it;
+    list<Station*> temp = connections;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode()=="ACK") {
+            return true;
+        }
+        
+    }
+    return false;
+}
+
+bool Station::checkAckisDone(){
+    list<Station*>::iterator it;
+    list<Station*> temp = connections;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode()=="Idle") {
+            return true;
+        }
+        
+    }
+    return false;
+}
+
+void Station::sendRTS(){
+    list<Station*>::iterator it;
+    list<Station*> temp = connections;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode()=="Receiving") {
+            (*it)->RTSRec();
+        }
+        
+    }
+    return;
 }
 
 
