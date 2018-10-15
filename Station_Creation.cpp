@@ -44,6 +44,9 @@ void Station::randBackOffTime(){
 
 void Station::doubleContention(int k){
     int newK = pow(2.0, k);
+    if (newK > CW_max || newK < 0) {
+        newK = 1;
+    }
     back_off_timer = (rand() % (newK * CW_0 - 0)) + 1;
     kCounter++;
     return;
@@ -81,7 +84,10 @@ bool Station::checkRangeForBusy(){
     list<Station*>::iterator it;
     list<Station*> temp = inRange;
     for (it = temp.begin(); it != temp.end(); ++it){
-        if ((*it)->getStatusNode() == "Trans") {
+        if (((*it)->getStatusNode() == "Trans" && (*it)->getTransmitCounter() != 100) || (*it)->getStatusNode() == "ACK") {
+            return true;
+        }
+        else if ((*it)->getStatusNode() == "RTS" || (*it)->getStatusNode() == "CTS"){
             return true;
         }
     }
@@ -105,6 +111,9 @@ void Station::conectionsRec(){
         if ((*it)->getStatusNode() == "Idle") {
             (*it)->setStatus("Receiving");
         }
+        else{
+            
+        }
     }
 }
 
@@ -125,8 +134,10 @@ void Station::conectionsACK(){
     list<Station*> temp = connections;
     for (it = temp.begin(); it != temp.end(); ++it){
         if ((*it)->getStatusNode()=="Receiving") {
-            (*it)->setStatus("ACK");
-            (*it)->setAckCounter();
+            if (!(*it)->checkRangeForBusy()) {
+                (*it)->setStatus("ACK");
+                (*it)->setAckCounter();
+            }
         }
         
     }
@@ -150,6 +161,7 @@ bool Station::checkAckisDone(){
     list<Station*> temp = connections;
     for (it = temp.begin(); it != temp.end(); ++it){
         if ((*it)->getStatusNode()=="Idle") {
+            (*it)->resetRTSRec();
             return true;
         }
         
@@ -161,14 +173,36 @@ void Station::sendRTS(){
     list<Station*>::iterator it;
     list<Station*> temp = connections;
     for (it = temp.begin(); it != temp.end(); ++it){
-        if ((*it)->getStatusNode()=="Receiving") {
+        if ((*it)->getStatusNode() == "Receiving") {
+            (*it)->setStatus("Idle");
+        }
+        else{
+            (*it)->setStatus("CTS");
+            (*it)->setCTSCounter();
             (*it)->RTSRec();
         }
-        
+    }
+    list<Station*>::iterator it2;
+    list<Station*> temp2 = inRange;
+    for (it2 = temp2.begin(); it2 != temp2.end(); ++it2){
+        if ((*it2)->getStatusNode() != "CTS") {
+            (*it2)->setStatus("Freeze");
+        }
     }
     return;
 }
 
+bool Station::receiverisCTS(){
+    list<Station*>::iterator it;
+    list<Station*> temp = connections;
+    for (it = temp.begin(); it != temp.end(); ++it){
+        if ((*it)->getStatusNode()=="CTS") {
+            return true;
+        }
+        
+    }
+    return false;
+}
 
 
 

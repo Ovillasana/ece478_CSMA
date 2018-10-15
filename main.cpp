@@ -159,6 +159,16 @@ void startTransmit(){
     return;
 }
 
+vector<string> getStatus(){
+    vector<string> templist;
+    list<Station*>::iterator it;
+    list<Station*> temp = concurrentSim1.getStations();
+    for (it = temp.begin(); it != temp.end(); ++it){
+        templist.push_back((*it)->getStatusNode());
+    }
+    return templist;
+}
+
 //test time creation
 int random_time(){int time = (rand() % (50000 - 0)) + 1; return time;}
 
@@ -171,9 +181,9 @@ void simulate(int lambdaA, int lambdaC, Station* A, Station* C, int val){
     C->makeList();
     while (concurrentSim1.getGlobalClk()< 50000) {
         concurrentSim1.deincrimentCounters();
-        concurrentSim1.updateStatus();
+        vector<string> lastStatuss = getStatus();
+        concurrentSim1.updateStatus(lastStatuss);
         //collision check
-        concurrentSim1.collisionCheck();
         checkTransmitTimeperNode(); //check each node for new packet
         concurrentSim1.incGlobalClk(1); // incriments global clock by one
     }
@@ -230,11 +240,11 @@ int main() {
     
     //concurrent simulation
     concurrentSim1.setStations(Nodes); // concurrent with out virtual carrier sensing  
-    createConectionsSim1(&A, &B, &C, &D); // concurrent
-    //createConectionsSim2(&A, &B, &C, &D); // hidden
+    //createConectionsSim1(&A, &B, &C, &D); // concurrent
+    createConectionsSim2(&A, &B, &C, &D); // hidden
 
-    int lambdaA = 50;
-    int lambdaC = 50;
+    int lambdaA = 300;
+    int lambdaC = 300;
     simulate(lambdaA, lambdaC, &A, &C, 1);
     cout << "Lambda A = "<<lambdaA<<"\n";
     cout << "Lambda C = "<<lambdaC<<"\n";

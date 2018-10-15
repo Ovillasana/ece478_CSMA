@@ -34,6 +34,9 @@ void Simulation::deincrimentCounters(){
         //{"Trans","Receiving","DIFS","RTS","CTS","NAVRTS","NAVCTS","BackOff","SIFS","Freeze","ACK","Idle"};
         if ((*it)->getStatusNode() == "DIFS") {
             (*it)->subtDIFSTimer();
+            if ((*it)->getDIFSTimer() < 0) {
+                (*it)->setDIFSTimer(0);
+            }
         }
         else if ((*it)->getStatusNode() == "RTS") {
             (*it)->deincRTSCounter();
@@ -43,9 +46,15 @@ void Simulation::deincrimentCounters(){
         }
         else if ((*it)->getStatusNode() == "BackOff") {
             (*it)->subtBackOffTime();
+            if ((*it)->getBackOffTime() < 0) {
+                (*it)->setBackoffTime(0);
+            }
         }
         else if ((*it)->getStatusNode() == "SIFS") {
             (*it)->subSIFS();
+            if ((*it)->getSIFS() < 0) {
+                (*it)->setSIFS();
+            }
         }
         else if ((*it)->getStatusNode() == "Trans") {
             (*it)->subTransmistCounter();
@@ -234,24 +243,36 @@ void Simulation::deincCTS(){
     
 }
 
-void Simulation::updateStatus(){
+void Simulation::updateStatus(vector<string> lastStatus){
     list<Station*>::iterator it;
     list<Station*> temp = Simulation::getStations();
+    if (getGlobalClk() == 7800) {
+        
+    }
     for (it = temp.begin(); it != temp.end(); ++it){
         if ((*it)->getStatusNode() == "DIFS") {
             if ((*it)->getDIFSTimer() == 0) {
-                (*it)->setStatus("BackOff");
+                if (!(*it)->checkRangeForBusy()) {
+                    (*it)->setStatus("BackOff");
+                }
+                
             }
+                else if((*it)->checkRangeForBusy()){
+                    (*it)->setStatus("DIFS");
+                    (*it)->setDIFSTimer(2);
+                }
         }
         else if ((*it)->getStatusNode() == "RTS") {
             if ((*it)->getRTSCounter() == 0) {
-                (*it)->sendRTS();
                 (*it)->setStatus("SIFS");
+                (*it)->sendRTS();
                 (*it)->setSIFS();
                 
             }
         }
+        
         else if ((*it)->getStatusNode() == "CTS") {
+            (*it)->resetRTSRec();
             if ((*it)->getCTSCounter() == 0) {
                 (*it)->setStatus("Idle");
             }
@@ -259,87 +280,162 @@ void Simulation::updateStatus(){
         else if ((*it)->getStatusNode() == "BackOff") {
             if ((*it)->getBackOffTime() == 0) {
                 if (!RTSCTS) {
-                    (*it)->setStatus("Trans");
-                    (*it)->setTransCounter();
-                    (*it)->conectionsRec();
-                    LineBusy = true;
+                    if ((*it)->checkRangeForBusy()){
+                        (*it)->setStatus("Freeze");
+                    }
+                    else{
+                        (*it)->setStatus("Trans");
+                        (*it)->setTransCounter();
+                        (*it)->conectionsRec();
+                        LineBusy = true;
+                    }
                 }
                 else if (RTSCTS){
+                    if ((*it)->checkRangeForBusy()) {
+                        (*it)->setStatus("Freeze");
+                    }
+                    else{
                     (*it)->setStatus("RTS");
                     (*it)->setRTSCounter();
-                    (*it)->conectionsRec();
+                    }
                 }
             }
-            else if ((*it)->checkRangeForBusy()){
-                (*it)->setStatus("Freeze");
-            }
         }
+        
         else if ((*it)->getStatusNode() == "SIFS") {
             if ((*it)->getSIFS() == 0) {
                 if (getRTSCTS()) {
-                    //FIX ME
+                    if (!(*it)->receiverisCTS()) {
+                        (*it)->setStatus("Idle");
+                        (*it)->doubleContention((*it)->getK());
+                        collisionCounter++;
+                    }
+                    else if ((*it)->receiverisCTS()){
+                        (*it)->setStatus("Wait");
+                    }
                 }
                 
-                if (!(*it)->receiverisACK()) {
-                    (*it)->setStatus("Idle");
-                    (*it)->doubleContention((*it)->getK());
-                    collisionCounter++;
-                }
-                else if ((*it)->receiverisACK()){
-                    (*it)->setStatus("Wait");
+                else{
+                    if (!(*it)->receiverisACK()) {
+                        (*it)->setStatus("DIFS");
+                        (*it)->doubleContention((*it)->getK());
+                        (*it)->setDIFSTimer(2);
+                        collisionCounter++;
+                    }
+                    else if ((*it)->receiverisACK()){
+                        (*it)->setStatus("Wait");
+                    }
                 }
             }
         }
 
         else if ((*it)->getStatusNode() == "Trans") {
+            (*it)->conectionsRec();
             if ((*it)->getTransmitCounter() == 0) {
-                collisionCheck();
-                if (collisionBool) {
-                    (*it)->conectionsIdle();
-                    LineBusy = false;
+                if (!getRTSCTS()) {
+                    collisionCheck();
+                    (*it)->setStatus("SIFS");
+                    (*it)->setSIFS();
+                    if (collisionBool) {
+                        (*it)->conectionsIdle();
+                        LineBusy = false;
+                    }
+                    else{
+                        (*it)->conectionsACK();
+                    }
                 }
                 else{
-                    (*it)->conectionsACK();
+                    collisionCheck();
+                    (*it)->setStatus("SIFS");
+                    (*it)->setSIFS();
+                    if (collisionBool) {
+                        (*it)->conectionsIdle();
+                        (*it)->setStatus("Idle");
+                        LineBusy = false;
+                    }
+                    else{
+                        (*it)->setStatus("Idle");
+                        (*it)->incPacketsthrough();
+                        (*it)->resetK();
+                        (*it)->popList(globalClock);
+                        LineBusy = false;
+                    }
+                    
                 }
-                (*it)->setStatus("SIFS");
-                (*it)->setSIFS();
+                
             }
         }
         else if ((*it)->getStatusNode() == "Freeze") {
-            if (!(*it)->checkRangeForBusy()) {
-                (*it)->setStatus("Idle");
+            if (!RTSCTS) {
+                if (!(*it)->checkRangeForBusy()) {
+                    (*it)->setStatus("BackOff");
+                }
             }
+            else{
+                if (!(*it)->checkRangeForBusy()) {
+                    (*it)->setStatus("Idle");
+                }
+            }
+            
         }
     
         else if ((*it)->getStatusNode() == "ACK") {
+            if ((*it)->checkRangeForBusy()) {
+                (*it)->setStatus("Receiving");
+            }
             if ((*it)->getAckCounter() == 0) {
                 (*it)->setStatus("Idle");
             }
         }
         else if ((*it)->getStatusNode() == "Wait") {
-            if ((*it)->checkAckisDone()) {
-                (*it)->setStatus("Idle");
-                (*it)->incPacketsthrough();
-                (*it)->resetK();
-                (*it)->popList(globalClock);
-                LineBusy = false;
+            if (!getRTSCTS()) {
+                if ((*it)->checkAckisDone()) {
+                    (*it)->setStatus("Idle");
+                    (*it)->incPacketsthrough();
+                    (*it)->resetK();
+                    (*it)->popList(globalClock);
+                    LineBusy = false;
+                }
+                else{
+                    (*it)->setStatus("Wait");
+                }
             }
             else{
-                (*it)->setStatus("Wait");
+                if ((*it)->checkAckisDone()) {
+                    (*it)->setStatus("Trans");
+                    (*it)->setTransCounter();
+                    (*it)->conectionsRec();
+                }
+                
             }
         }
         else if ((*it)->getStatusNode() == "Receiving"){
             if (getRTSCTS()) {
                 if ((*it)->getRTSRec()) {
-                    (*it)->setStatus("CTS");
-                    (*it)->setCTSCounter();
+                    if (!(*it)->checkRangeForBusy()) {
+                        if ((*it)->getRTSRec()) {
+                            (*it)->setStatus("CTS");
+                            (*it)->setCTSCounter();
+                        }
+                    }
+                }
+                if ((*it)->checkRangeForBusy()) {
+                    (*it)->setStatus("Idle");
+
                 }
             }
             if ((*it)->getSentPackets()) {
                 (*it)->setStatus("Idle");
             }
         }
-
+        else if ((*it)->getStatusNode() == "Idle"){
+            if (getRTSCTS()) {
+                if ((*it)->getRTSRec()) {
+                    (*it)->setStatus("CTS");
+                    (*it)->setCTSCounter();
+                }
+            }
+        }
 }
     collisionBool = false;
 }
@@ -349,14 +445,13 @@ void Simulation::collisionCheck(){
     list<Station*> temp = Simulation::getStations();
     int transcollisionCounter = 0;
     for (it = temp.begin(); it != temp.end(); ++it){
-        if ((*it)->getStatusNode() == "Trans") {
+        if ((*it)->getStatusNode() == "Trans"  || (*it)->getStatusNode() == "ACK") {
             transcollisionCounter++;
         }
     }
     if (transcollisionCounter >1) {
         collisionBool = true;
     }
-    
 }
 
 

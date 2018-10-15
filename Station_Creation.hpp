@@ -117,6 +117,9 @@ public:
     void deincACKcounter(){ACKCounter--;}
     bool checkAckisDone();
     void sendRTS();
+    bool receiverisCTS();
+    void setBackoffTime(int val){back_off_timer = val;}
+
 
 
 };

@@ -81,7 +81,7 @@ public:
     void deincRTS();
     void deincCTS();
     string getStatusat(int val){return status.at(val);}
-    void updateStatus();
+    void updateStatus(vector<string> lastStatus);
     void conectionsRec();
     void collisionCheck();
     
